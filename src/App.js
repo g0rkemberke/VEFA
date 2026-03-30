@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate, useLocat
 import { auth, db } from './firebase'; 
 import { onAuthStateChanged, signOut } from 'firebase/auth'; 
 import { collection, onSnapshot, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore'; 
-// YENİ: ChevronDown ikonu eklendi
 import { Star, Quote, ChevronDown } from 'lucide-react'; 
 
 import Navbar from './components/Navbar';
@@ -117,10 +116,51 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation(); 
   
-  // YENİ: Hangi sayfaya gidilirse gidilsin en üste çıkaran sistem
+  // PWA Kurulum State'leri
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [location.pathname]);
+
+  // PWA Mantığı - Giriş
+  useEffect(() => {
+    const isIphone = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+    setIsIOS(isIphone);
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    });
+
+    if (isIphone && !window.navigator.standalone) {
+      setShowInstallBanner(true);
+    }
+
+    window.addEventListener('appinstalled', () => {
+      setDeferredPrompt(null);
+      setShowInstallBanner(false);
+      showToast('VefaApp ana ekranınıza başarıyla eklendi!', 'success');
+    });
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (isIOS) {
+      showToast('Yüklemek için Paylaş simgesine basıp "Ana Ekrana Ekle"yi seçin.', 'info');
+      return;
+    }
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setShowInstallBanner(false);
+      }
+    }
+  };
 
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [selectedPkg, setSelectedPkg] = useState(null);
@@ -277,7 +317,6 @@ function AppContent() {
       showToast('Lütfen işleme devam etmeden önce bir mezarlık seçin veya yazın.', 'error');
       return; 
     }
-    
     setDrawerOpen(false);
     setTimeout(() => { setCheckoutOpen(true); }, 300);
   };
@@ -423,12 +462,10 @@ function AppContent() {
       )}
 
       <Routes>
-        {/* Kontrol panelleri genellikle kendi boşluklarını ayarlar, onları koruyoruz */}
         <Route path="/hesabim" element={isLoggedIn ? <div className="pt-28 md:pt-32"><UserDashboard globalOrders={globalOrders} user={currentUser} onLogout={handleLogout} /></div> : <Navigate to="/" />} />
         <Route path="/esnaf" element={(isLoggedIn && (currentUser?.role === 'partner' || currentUser?.role === 'admin')) ? <div className="pt-28 md:pt-32"><PartnerDashboard onLogout={() => navigate('/')} globalOrders={globalOrders} updateOrderStatus={updateOrderStatus} partnerBalance={partnerBalance} /></div> : <Navigate to="/" />} />
         <Route path="/admin" element={(isLoggedIn && currentUser?.role === 'admin') ? <AdminDashboard onLogout={() => navigate('/')} globalOrders={globalOrders} adminFinance={adminFinance} updateOrderStatus={updateOrderStatus} cityDemands={cityDemands} /> : <Navigate to="/" />} />
         
-        {/* YENİ: Diğer sayfaların üzerini Navbar kapatmasın diye 'pt-32' (yukarıdan boşluk) eklendi */}
         <Route path="/hizmetler" element={<div className="pt-32"><ServicesPage onSelectPackage={handleSelectPackage} /><Footer /></div>} />
         <Route path="/surec" element={<div className="pt-32"><ProcessPage graveDesign={graveDesign} setGraveDesign={setGraveDesign} /><Footer /></div>} />
         <Route path="/kurumsal" element={<div className="pt-32"><CorporatePage /><Footer /></div>} />
@@ -453,7 +490,6 @@ function AppContent() {
                     <p className="text-lg md:text-xl text-[#134B36]/70 font-light max-w-2xl mx-auto leading-relaxed">Şehirler arası mesafeleri ortadan kaldırıyor, bakım hizmetlerinde en yüksek şeffaflık ve kalite standartlarını uyguluyoruz.</p>
                     
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-6">
-                      {/* YENİ: Aşağı kaydıran zıplayan buton */}
                       <button 
                         onClick={() => {
                           const atolye = document.getElementById('atolye-section');
@@ -481,7 +517,6 @@ function AppContent() {
                 <CemeterySearch onOpenDemand={() => setDemandOpen(true)} />
               </section>
 
-              {/* YENİ: Butonun inmesi için id="atolye-section" eklendi */}
               <section id="atolye-section" className="py-32 scroll-mt-24">
                 <VefaAtolyesi graveDesign={graveDesign} setGraveDesign={setGraveDesign} />
               </section>
@@ -497,6 +532,37 @@ function AppContent() {
           </>
         } />
       </Routes>
+
+      {/* PWA Yükleme Butonu (Yüzen - Floating) */}
+      {showInstallBanner && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md animate-in slide-in-from-bottom-10 duration-700">
+          <div className="bg-[#134B36] text-[#F8F6F0] p-4 rounded-[2rem] shadow-2xl border border-[#C9A84C]/30 flex items-center justify-between backdrop-blur-md bg-opacity-95">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/5">
+                <span className="font-serif font-bold text-[#C9A84C]">V</span>
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold uppercase tracking-widest text-[#C9A84C]">VefaApp Mobil</p>
+                <p className="text-[10px] opacity-80">Ana ekranınıza ekleyin</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleInstallApp}
+                className="bg-[#C9A84C] text-[#134B36] px-5 py-2.5 rounded-xl text-[11px] font-black uppercase hover:bg-white transition-all active:scale-95 shadow-lg"
+              >
+                {isIOS ? 'Nasıl Yüklenir?' : 'Hemen Yükle'}
+              </button>
+              <button 
+                onClick={() => setShowInstallBanner(false)}
+                className="p-2 opacity-50 hover:opacity-100 text-white"
+              >
+                <span className="text-xl">&times;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <OrderDrawer 
         isOpen={isDrawerOpen} 
@@ -515,17 +581,17 @@ function AppContent() {
       <AuthModal isOpen={isAuthOpen} onClose={() => setAuthOpen(false)} initialView={authView} onLoginSuccess={handleLoginSuccess} />
       
       {isDemandOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0d1a10]/60 backdrop-blur-md transition-all duration-500">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-[#0d1a10]/60 backdrop-blur-md transition-all duration-500">
            <div className="bg-[#f8f6f0] rounded-[3rem] p-12 md:p-16 max-w-xl w-full shadow-2xl space-y-8 border border-[#C9A84C]/20 relative animate-in zoom-in-95 duration-300">
-              <div className="flex justify-between items-start">
-                <h2 className="text-4xl font-serif text-[#134B36]">Şehir Talebi</h2>
-                <button onClick={() => setDemandOpen(false)} className="text-[#134B36]/40 hover:text-[#134B36] transition-colors"><span className="text-4xl leading-none">&times;</span></button>
-              </div>
-              <div className="space-y-4">
-                <input type="text" placeholder="Hangi Şehir?" value={demandInput.city} onChange={(e) => setDemandInput({...demandInput, city: e.target.value})} className="w-full p-6 bg-white border border-[#134B36]/10 text-[#1a1c19] rounded-2xl outline-none focus:border-[#C9A84C] transition-all" />
-                <input type="email" placeholder="E-posta Adresiniz" value={demandInput.email} onChange={(e) => setDemandInput({...demandInput, email: e.target.value})} className="w-full p-6 bg-white border border-[#134B36]/10 text-[#1a1c19] rounded-2xl outline-none focus:border-[#C9A84C] transition-all" />
-              </div>
-              <button onClick={handleDemandSubmit} className="w-full py-6 bg-[#134B36] text-[#F8F6F0] rounded-[1.5rem] font-bold hover:bg-[#0B2E21] hover:shadow-xl hover:-translate-y-1 transition-all active:scale-95">Talebi Gönder</button>
+             <div className="flex justify-between items-start">
+               <h2 className="text-4xl font-serif text-[#134B36]">Şehir Talebi</h2>
+               <button onClick={() => setDemandOpen(false)} className="text-[#134B36]/40 hover:text-[#134B36] transition-colors"><span className="text-4xl leading-none">&times;</span></button>
+             </div>
+             <div className="space-y-4">
+               <input type="text" placeholder="Hangi Şehir?" value={demandInput.city} onChange={(e) => setDemandInput({...demandInput, city: e.target.value})} className="w-full p-6 bg-white border border-[#134B36]/10 text-[#1a1c19] rounded-2xl outline-none focus:border-[#C9A84C] transition-all" />
+               <input type="email" placeholder="E-posta Adresiniz" value={demandInput.email} onChange={(e) => setDemandInput({...demandInput, email: e.target.value})} className="w-full p-6 bg-white border border-[#134B36]/10 text-[#1a1c19] rounded-2xl outline-none focus:border-[#C9A84C] transition-all" />
+             </div>
+             <button onClick={handleDemandSubmit} className="w-full py-6 bg-[#134B36] text-[#F8F6F0] rounded-[1.5rem] font-bold hover:bg-[#0B2E21] hover:shadow-xl hover:-translate-y-1 transition-all active:scale-95">Talebi Gönder</button>
            </div>
         </div>
       )}
