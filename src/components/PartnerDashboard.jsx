@@ -1,6 +1,41 @@
 import React, { useState, useRef } from 'react';
 import { MapPin, Clock, Camera, CheckCircle, Wallet, ListTodo, LogOut, UploadCloud, ChevronRight, Briefcase, User, Building, Loader2, Navigation, ArrowUpRight, CheckSquare } from 'lucide-react';
 
+// YENİ: SİSTEMİ RAHATLATAN MUCİZEVİ SIKIŞTIRMA ALGORİTMASI
+// Bu fonksiyon, fotoğrafı Firebase'e yollamadan önce tarayıcıda %80 oranında küçültür (Kaliteyi bozmadan).
+const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Firebase'in kabul ettiği Base64 formatında sıkıştırılmış olarak döndür
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedBase64);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
+
 const PartnerDashboard = ({ onLogout, globalOrders = [], updateOrderStatus, partnerBalance = 0 }) => {
   const [activeTab, setActiveTab] = useState('pool'); 
   const poolOrders = globalOrders.filter(o => o.status === 'pending');
@@ -12,24 +47,19 @@ const PartnerDashboard = ({ onLogout, globalOrders = [], updateOrderStatus, part
   const [uploadingOrderId, setUploadingOrderId] = useState(null);
   const [isUploading, setIsUploading] = useState({ orderId: null, type: null });
 
-  // YENİ: IBAN state'i ve formatlayıcı fonksiyon
   const [iban, setIban] = useState('TR');
   
   const handleIbanChange = (e) => {
-    // Sadece harf ve rakamları al
     let rawValue = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     
-    // Kullanıcının "TR" kısmını silmesini engelle
     if (!rawValue.startsWith('TR')) {
       rawValue = 'TR' + rawValue.replace(/^TR/, '');
     }
     
-    // TR + 24 Rakam = 26 Karakter sınırı
     if (rawValue.length > 26) {
       rawValue = rawValue.slice(0, 26);
     }
     
-    // 4'erli gruplara bölerek boşluk ekle (Banka stili)
     const formattedValue = rawValue.match(/.{1,4}/g)?.join(' ') || rawValue;
     setIban(formattedValue);
   };
@@ -45,29 +75,29 @@ const PartnerDashboard = ({ onLogout, globalOrders = [], updateOrderStatus, part
     if (type === 'after' && afterInputRef.current) afterInputRef.current.click();
   };
 
-  const handleFileChange = (e, type) => {
+  // YENİ: YÜKLEME FONKSİYONU GÜNCELLENDİ
+  const handleFileChange = async (e, type) => {
     const file = e.target.files[0];
     if (!file || !uploadingOrderId) return;
 
     setIsUploading({ orderId: uploadingOrderId, type });
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64String = reader.result; 
-      try {
-        await updateOrderStatus(uploadingOrderId, 'in-progress', { 
-          [type === 'before' ? 'beforeUploaded' : 'afterUploaded']: true,
-          [type === 'before' ? 'beforeImgLocal' : 'afterImgLocal']: base64String 
-        });
-      } catch (error) {
-        console.error("Yükleme hatası:", error);
-        alert("Fotoğraf yüklenemedi.");
-      } finally {
-        setIsUploading({ orderId: null, type: null });
-        e.target.value = null; 
-      }
-    };
-    reader.readAsDataURL(file); 
+    try {
+      // 10MB'lık fotoğrafı saniyeler içinde 200KB civarına düşürüyoruz
+      const compressedBase64String = await compressImage(file, 1200, 0.7);
+      
+      // Sıkıştırılmış fotoğrafı sisteme (App.js'e ve Firebase'e) yolluyoruz
+      await updateOrderStatus(uploadingOrderId, 'in-progress', { 
+        [type === 'before' ? 'beforeUploaded' : 'afterUploaded']: true,
+        [type === 'before' ? 'beforeImgLocal' : 'afterImgLocal']: compressedBase64String 
+      });
+    } catch (error) {
+      console.error("Yükleme veya sıkıştırma hatası:", error);
+      alert("Fotoğraf yüklenemedi. Lütfen tekrar deneyin.");
+    } finally {
+      setIsUploading({ orderId: null, type: null });
+      e.target.value = null; 
+    }
   };
 
   const handleCompleteOrder = (order) => {
@@ -214,7 +244,7 @@ const PartnerDashboard = ({ onLogout, globalOrders = [], updateOrderStatus, part
                     <div className="grid grid-cols-2 gap-4 mb-8">
                       <button onClick={() => triggerFileInput(order.id, 'before')} disabled={isUploading.orderId === order.id && isUploading.type === 'before'} className={`relative flex flex-col items-center justify-center gap-3 p-4 border-2 border-dashed rounded-[1.5rem] transition-all overflow-hidden h-40 ${order.beforeUploaded ? 'border-green-500 shadow-md' : 'border-[#134B36]/20 bg-[#F8F6F0] hover:bg-white hover:border-[#C9A84C] text-[#134B36]/60'}`}>
                         {isUploading.orderId === order.id && isUploading.type === 'before' ? (
-                          <><Loader2 size={32} className="animate-spin text-[#C9A84C]" /><span className="text-xs font-bold text-center text-[#134B36]">Yükleniyor...</span></>
+                          <><Loader2 size={32} className="animate-spin text-[#C9A84C]" /><span className="text-xs font-bold text-center text-[#134B36]">Sıkıştırılıyor...</span></>
                         ) : order.beforeImgLocal ? (
                           <><img src={order.beforeImgLocal} alt="Öncesi" className="absolute inset-0 w-full h-full object-cover opacity-90" /><div className="relative z-10 bg-green-500 text-white rounded-full p-1.5 shadow-lg"><CheckCircle size={24} /></div><span className="relative z-10 text-[10px] font-bold text-white drop-shadow-md bg-black/60 px-3 py-1 rounded-full mt-2 backdrop-blur-sm">Değiştir</span></>
                         ) : (
@@ -224,7 +254,7 @@ const PartnerDashboard = ({ onLogout, globalOrders = [], updateOrderStatus, part
 
                       <button onClick={() => triggerFileInput(order.id, 'after')} disabled={!order.beforeUploaded || (isUploading.orderId === order.id && isUploading.type === 'after')} className={`relative flex flex-col items-center justify-center gap-3 p-4 border-2 border-dashed rounded-[1.5rem] transition-all overflow-hidden h-40 ${order.afterUploaded ? 'border-green-500 shadow-md' : !order.beforeUploaded ? 'opacity-40 cursor-not-allowed border-[#134B36]/20 bg-gray-50 text-gray-400' : 'border-[#134B36]/20 bg-[#F8F6F0] hover:bg-white hover:border-[#C9A84C] text-[#134B36]/60'}`}>
                         {isUploading.orderId === order.id && isUploading.type === 'after' ? (
-                          <><Loader2 size={32} className="animate-spin text-[#C9A84C]" /><span className="text-xs font-bold text-center text-[#134B36]">Yükleniyor...</span></>
+                          <><Loader2 size={32} className="animate-spin text-[#C9A84C]" /><span className="text-xs font-bold text-center text-[#134B36]">Sıkıştırılıyor...</span></>
                         ) : order.afterImgLocal ? (
                           <><img src={order.afterImgLocal} alt="Sonrası" className="absolute inset-0 w-full h-full object-cover opacity-90" /><div className="relative z-10 bg-green-500 text-white rounded-full p-1.5 shadow-lg"><CheckCircle size={24} /></div><span className="relative z-10 text-[10px] font-bold text-white drop-shadow-md bg-black/60 px-3 py-1 rounded-full mt-2 backdrop-blur-sm">Değiştir</span></>
                         ) : (
@@ -311,7 +341,6 @@ const PartnerDashboard = ({ onLogout, globalOrders = [], updateOrderStatus, part
           </div>
         )}
 
-        {/* YENİ IBAN KONTROL ALANI */}
         {activeTab === 'profile' && (
           <div className="space-y-6 max-w-3xl">
             <div className="bg-white p-8 md:p-10 rounded-[2.5rem] border border-[#134B36]/10 shadow-sm">
@@ -336,7 +365,6 @@ const PartnerDashboard = ({ onLogout, globalOrders = [], updateOrderStatus, part
                    <input type="text" placeholder="Örn: Görkem Berke Tutkun" className="w-full px-5 py-4 bg-[#f8f6f0] rounded-2xl outline-none focus:border-[#C9A84C] border border-transparent transition-all font-medium text-gray-800" />
                  </div>
                  
-                 {/* YENİ IBAN INPUTU */}
                  <div>
                    <label className="text-[10px] font-black text-[#134B36]/50 uppercase tracking-[0.2em] block mb-2 pl-1 flex items-center justify-between">
                      <span>IBAN Numarası</span>

@@ -31,10 +31,23 @@ const AdminDashboard = ({ onLogout, globalOrders = [], adminFinance, updateOrder
     try {
       await updateDoc(doc(db, 'orders', orderId), {
         reviewComment: "",
-        rating: 0
+        rating: 0,
+        isFeatured: false // Silinirse vitrinden de düşsün
       });
     } catch (error) {
       console.error("Yorum silme hatası:", error);
+    }
+  };
+
+  // YENİ: Yorumu Ana Sayfaya (Vitrine) Ekleme/Kaldırma Fonksiyonu
+  const handleToggleFeatureReview = async (orderId, currentStatus) => {
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        isFeatured: !currentStatus
+      });
+    } catch (error) {
+      console.error("Vitrin güncelleme hatası:", error);
+      alert("Durum güncellenemedi, lütfen tekrar deneyin.");
     }
   };
 
@@ -313,6 +326,7 @@ const AdminDashboard = ({ onLogout, globalOrders = [], adminFinance, updateOrder
           </div>
         )}
 
+        {/* GÜNCELLENEN YORUMLAR SEKMESİ */}
         {activeTab === 'reviews' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {reviewedOrders.length === 0 ? (
@@ -321,7 +335,7 @@ const AdminDashboard = ({ onLogout, globalOrders = [], adminFinance, updateOrder
                 <p className="text-[#134B36]/50 font-medium">Henüz değerlendirilmiş bir sipariş bulunmuyor.</p>
               </div>
             ) : reviewedOrders.map(order => (
-              <div key={order.id} className="bg-white p-8 rounded-[2.5rem] border border-[#134B36]/10 shadow-[0_10px_40px_rgba(19,75,54,0.03)] flex flex-col justify-between">
+              <div key={order.id} className="bg-white p-8 rounded-[2.5rem] border border-[#134B36]/10 shadow-[0_10px_40px_rgba(19,75,54,0.03)] flex flex-col justify-between transition-all">
                 <div>
                   <div className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-1.5">
@@ -336,9 +350,26 @@ const AdminDashboard = ({ onLogout, globalOrders = [], adminFinance, updateOrder
                     <p className="text-sm font-bold text-[#134B36]">{order.customer}</p>
                     <p className="text-xs text-[#134B36]/50 font-medium mt-0.5">{order.cemetery}</p>
                   </div>
-                  <button onClick={() => handleDeleteReview(order.id)} className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm">
-                    <Trash2 size={18} />
-                  </button>
+                  <div className="flex gap-2">
+                    
+                    {/* YENİ: VİTRİNE EKLE BUTONU */}
+                    <button 
+                      onClick={() => handleToggleFeatureReview(order.id, order.isFeatured)} 
+                      className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm ${
+                        order.isFeatured 
+                          ? 'bg-[#C9A84C] text-[#0d1a10] hover:bg-red-50 hover:text-red-500' // Vitrindeyse, basınca kalkacağını belli et
+                          : 'bg-green-50 text-green-600 hover:bg-[#C9A84C] hover:text-[#0d1a10]'
+                      }`}
+                      title={order.isFeatured ? "Ana Sayfadan Kaldır" : "Ana Sayfaya Ekle"}
+                    >
+                      {order.isFeatured ? <Star className="fill-[#0d1a10]" size={14} /> : <Star size={14} />}
+                      {order.isFeatured ? 'Vitrinde' : 'Vitrine Ekle'}
+                    </button>
+
+                    <button onClick={() => handleDeleteReview(order.id)} className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm" title="Tamamen Sil">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

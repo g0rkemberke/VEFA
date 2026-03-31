@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate, useLocat
 import { auth, db } from './firebase'; 
 import { onAuthStateChanged, signOut } from 'firebase/auth'; 
 import { collection, onSnapshot, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore'; 
-import { Star, Quote, ChevronDown } from 'lucide-react'; 
+import { Star, Quote, ChevronDown, CheckCircle } from 'lucide-react'; 
 
 import Navbar from './components/Navbar';
 import Packages from './components/Packages';
@@ -22,9 +22,12 @@ import ServicesPage from './components/ServicesPage';
 import ProcessPage from './components/ProcessPage';
 import CorporatePage from './components/CorporatePage';
 import PartnerApplication from './components/PartnerApplication'; 
+import BeforeAfterSlider from './components/BeforeAfterSlider';
+import MobileBottomNav from './components/MobileBottomNav';
 
 const Testimonials = ({ globalOrders }) => {
-  const realReviews = globalOrders.filter(o => o.status === 'completed' && o.rating >= 4 && o.reviewComment);
+  // YENİ: Artık sadece Admin Panelinden "Vitrine Ekle" denilmiş (isFeatured: true) yorumlar listelenir.
+  const realReviews = globalOrders.filter(o => o.isFeatured === true);
 
   const demoReviews = [
     {
@@ -50,10 +53,10 @@ const Testimonials = ({ globalOrders }) => {
   const displayReviews = [...realReviews, ...demoReviews].slice(0, 6);
 
   return (
-    <section className="py-32 bg-[#F8F6F0] relative overflow-hidden">
+    <section className="py-20 md:py-32 bg-[#F8F6F0] relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#C9A84C]/30 to-transparent"></div>
       <div className="max-w-[1440px] mx-auto px-6 md:px-12 relative z-10">
-        <div className="text-center mb-20">
+        <div className="text-center mb-16 md:mb-20">
           <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#C9A84C] mb-4 block">Gerçek Dönüşümler</span>
           <h2 className="text-4xl md:text-5xl font-serif text-[#134B36] tracking-tight">Hizmet Alan Ailelerimiz</h2>
           <div className="h-1 w-20 bg-[#134B36]/20 mt-6 mx-auto rounded-full" />
@@ -61,29 +64,14 @@ const Testimonials = ({ globalOrders }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {displayReviews.map((review) => (
-            <div key={review.id} className="bg-white rounded-[2.5rem] border border-[#134B36]/10 shadow-lg overflow-hidden flex flex-col group hover:-translate-y-2 transition-all duration-500">
+            <div key={review.id} className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-[#134B36]/10 shadow-lg overflow-hidden flex flex-col group hover:-translate-y-2 transition-all duration-500">
               
-              <div className="grid grid-cols-2 gap-0.5 bg-gray-100 h-48 relative">
-                <div className="relative group/img overflow-hidden">
-                  <img 
-                    src={review.beforeImgLocal || review.beforeImg || "https://via.placeholder.com/200x200?text=Hazirlaniyor"} 
-                    alt="Öncesi" 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/20 group-hover/img:bg-transparent transition-all" />
-                  <span className="absolute top-3 left-3 bg-black/60 text-white text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest">Öncesi</span>
-                </div>
-                <div className="relative group/img overflow-hidden">
-                  <img 
-                    src={review.afterImgLocal || review.afterImg || "https://via.placeholder.com/200x200?text=Hazirlaniyor"} 
-                    alt="Sonrası" 
-                    className="w-full h-full object-cover"
-                  />
-                  <span className="absolute top-3 left-3 bg-[#134B36] text-white text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest">Sonrası</span>
-                </div>
-              </div>
+              <BeforeAfterSlider 
+                beforeImg={review.beforeImgLocal || review.beforeImg || "https://via.placeholder.com/400x300?text=Hazirlaniyor"} 
+                afterImg={review.afterImgLocal || review.afterImg || "https://via.placeholder.com/400x300?text=Hazirlaniyor"} 
+              />
 
-              <div className="p-8 flex-1 flex flex-col relative">
+              <div className="p-6 md:p-8 flex-1 flex flex-col relative bg-white">
                 <Quote size={30} className="text-[#C9A84C]/10 absolute top-4 right-6" />
                 <div className="flex gap-1 mb-4">
                   {[...Array(review.rating || 5)].map((_, i) => (
@@ -116,7 +104,6 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation(); 
   
-  // PWA Kurulum State'leri
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
@@ -125,7 +112,6 @@ function AppContent() {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [location.pathname]);
 
-  // PWA Mantığı - Giriş
   useEffect(() => {
     const isIphone = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
     setIsIOS(isIphone);
@@ -243,7 +229,7 @@ function AppContent() {
   };
 
   const [graveDesign, setGraveDesign] = useState({
-    name: '', date: '', marble: 'white', headstone: 'classic', flowers: 'none', cemetery: ''
+    name: '', date: '', marble: 'white', headstone: 'classic', flowers: 'none', cemetery: '', ada: '', parsel: ''
   });
 
   const calculateDynamicPrice = () => {
@@ -313,8 +299,8 @@ function AppContent() {
   };
 
   const handleProceedToCheckout = () => {
-    if (!graveDesign.cemetery || graveDesign.cemetery.trim() === '') {
-      showToast('Lütfen işleme devam etmeden önce bir mezarlık seçin veya yazın.', 'error');
+    if (!graveDesign.name || !graveDesign.cemetery || graveDesign.cemetery.trim() === '') {
+      showToast('Lütfen işleme devam etmeden önce tüm bilgileri doldurun.', 'error');
       return; 
     }
     setDrawerOpen(false);
@@ -341,7 +327,7 @@ function AppContent() {
       package: pkgInfo?.title || 'Özel Sipariş',
       cemetery: graveDesign.cemetery || 'Mezarlık Belirtilmedi',
       deceasedName: graveDesign.name || 'İsimsiz Mezar',
-      graveDetails: `${graveDesign.marble === 'white' ? 'Beyaz' : graveDesign.marble === 'black' ? 'Siyah' : 'Gri'} Mermer, ${graveDesign.flowers !== 'none' ? graveDesign.flowers + ' dikimi' : 'çiçeksiz'}${extraNotes}`,
+      graveDetails: `Ada: ${graveDesign.ada || '-'}, Parsel: ${graveDesign.parsel || '-'} | ${graveDesign.marble === 'white' ? 'Beyaz' : graveDesign.marble === 'black' ? 'Siyah' : 'Gri'} Mermer, ${graveDesign.flowers !== 'none' ? graveDesign.flowers + ' dikimi' : 'çiçeksiz'}${extraNotes}`,
       price: finalPrice, 
       date: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }),
       status: 'pending',
@@ -412,10 +398,18 @@ function AppContent() {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8F6F0]">
-         <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-[#134B36]/20 border-t-[#C9A84C] rounded-full animate-spin"></div>
-            <p className="text-[#134B36] font-serif animate-pulse">Vefa'ya bağlanılıyor...</p>
+      <div className="min-h-screen bg-[#F8F6F0] p-6 md:p-12 flex flex-col pt-32">
+         <div className="max-w-4xl mx-auto w-full space-y-8 animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="h-10 w-48 bg-[#134B36]/10 rounded-xl"></div>
+              <div className="h-10 w-10 bg-[#134B36]/10 rounded-full"></div>
+            </div>
+            <div className="h-64 w-full bg-[#134B36]/5 border border-[#134B36]/10 rounded-[2.5rem]"></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="h-40 bg-[#134B36]/5 border border-[#134B36]/10 rounded-[2rem]"></div>
+              <div className="h-40 bg-[#134B36]/5 border border-[#134B36]/10 rounded-[2rem]"></div>
+              <div className="h-40 bg-[#134B36]/5 border border-[#134B36]/10 rounded-[2rem]"></div>
+            </div>
          </div>
       </div>
     );
@@ -451,7 +445,7 @@ function AppContent() {
   );
 
   return (
-    <div className="min-h-screen relative selection:bg-[#134B36] selection:text-white overflow-hidden">
+    <div className="min-h-screen relative selection:bg-[#134B36] selection:text-white overflow-hidden pb-20 md:pb-0">
       <div className="premium-bg" />
       <div className="aura" />
       
@@ -475,54 +469,66 @@ function AppContent() {
           <>
             <main className="relative z-10">
               
-              <header className="relative max-w-[1440px] mx-auto px-6 md:px-12 pt-40 pb-20 min-h-[90vh] flex flex-col justify-center">
-                <div className="relative border border-[#134B36]/20 rounded-[3rem] p-10 md:p-20 text-center bg-[#F8F6F0]/95 backdrop-blur-xl shadow-xl animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                  <div className="absolute top-0 left-0 w-24 md:w-32 h-24 md:h-32 border-t border-l border-[#134B36]/30 rounded-tl-[3rem] opacity-50"></div>
-                  <div className="absolute bottom-0 right-0 w-24 md:w-32 h-24 md:h-32 border-b border-r border-[#134B36]/30 rounded-br-[3rem] opacity-50"></div>
-                  <div className="relative z-10 max-w-4xl mx-auto space-y-10">
-                    <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full border border-[#134B36]/20 bg-white shadow-sm hover:scale-105 transition-transform duration-500 cursor-default">
-                      <div className="h-2 w-2 rounded-full bg-[#1E6B4E] animate-pulse"></div>
-                      <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#134B36]">Profesyonel Mezar Bakım Hizmeti</span>
+              <header className="relative max-w-[1440px] mx-auto px-6 md:px-12 pt-32 md:pt-40 pb-16 min-h-[85vh] flex flex-col justify-center">
+                <div className="relative border border-[#134B36]/10 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-20 text-center bg-white/80 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                  <div className="absolute top-0 left-0 w-24 md:w-32 h-24 md:h-32 border-t border-l border-[#134B36]/20 rounded-tl-[2.5rem] md:rounded-tl-[3rem]"></div>
+                  <div className="absolute bottom-0 right-0 w-24 md:w-32 h-24 md:h-32 border-b border-r border-[#134B36]/20 rounded-br-[2.5rem] md:rounded-br-[3rem]"></div>
+                  
+                  <div className="relative z-10 max-w-4xl mx-auto space-y-8 md:space-y-10">
+                    <div className="inline-flex items-center gap-3 px-4 md:px-5 py-2 rounded-full border border-[#134B36]/10 bg-white shadow-sm">
+                      <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                      <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.3em] text-[#134B36]">Online Mezar Bakım Sistemi</span>
                     </div>
-                    <h1 className="text-5xl md:text-[6rem] font-serif font-medium text-[#134B36] leading-[1.1] tracking-tight">
-                      Sevdiklerinizin emaneti, <br /><span className="italic text-[#1E6B4E] font-normal opacity-90">bize emanet.</span>
-                    </h1>
-                    <p className="text-lg md:text-xl text-[#134B36]/70 font-light max-w-2xl mx-auto leading-relaxed">Şehirler arası mesafeleri ortadan kaldırıyor, bakım hizmetlerinde en yüksek şeffaflık ve kalite standartlarını uyguluyoruz.</p>
                     
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-6">
+                    <h1 className="text-4xl md:text-[5.5rem] font-serif font-medium text-[#134B36] leading-[1.15] tracking-tight">
+                      Sevdiklerinizin emaneti, <br /><span className="italic text-[#C9A84C] font-normal">bize emanet.</span>
+                    </h1>
+                    
+                    <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 pt-2 pb-4">
+                       <span className="flex items-center gap-2 text-xs md:text-sm font-medium text-[#134B36]/80"><CheckCircle size={16} className="text-[#C9A84C]"/> Güvenilir Saha Ekibi</span>
+                       <span className="flex items-center gap-2 text-xs md:text-sm font-medium text-[#134B36]/80"><CheckCircle size={16} className="text-[#C9A84C]"/> Öncesi/Sonrası Fotoğraf</span>
+                       <span className="flex items-center gap-2 text-xs md:text-sm font-medium text-[#134B36]/80"><CheckCircle size={16} className="text-[#C9A84C]"/> Tam Zamanında Teslim</span>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 pt-4">
                       <button 
                         onClick={() => {
                           const atolye = document.getElementById('atolye-section');
                           if(atolye) atolye.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }} 
-                        className="bg-[#134B36] text-[#F8F6F0] px-10 py-5 rounded-full text-sm font-bold hover:bg-[#0B2E21] hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 w-full sm:w-auto flex items-center justify-center gap-3 group"
+                        className="bg-[#134B36] text-[#F8F6F0] px-8 md:px-10 py-4 md:py-5 rounded-2xl md:rounded-full text-sm font-bold shadow-xl hover:bg-[#0B2E21] hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 w-full sm:w-auto flex items-center justify-center gap-3"
                       >
-                        Emanetinizi Tasarlayın 
+                        Hemen Sipariş Oluştur
                         <ChevronDown size={18} className="animate-bounce text-[#C9A84C]" />
                       </button>
 
-                      <button onClick={() => navigate('/hizmetler')} className="bg-white border border-[#134B36]/20 text-[#134B36] px-10 py-5 rounded-full text-sm font-bold hover:bg-[#F8F6F0] hover:shadow-lg hover:-translate-y-1 transition-all duration-300 w-full sm:w-auto">Hizmetleri İncele</button>
+                      <button onClick={() => navigate('/hizmetler')} className="bg-white border border-[#134B36]/20 text-[#134B36] px-8 md:px-10 py-4 md:py-5 rounded-2xl md:rounded-full text-sm font-bold hover:bg-[#F8F6F0] hover:shadow-lg transition-all duration-300 w-full sm:w-auto">
+                        Paketleri İncele
+                      </button>
                     </div>
                   </div>
                 </div>
               </header>
 
-              <section className="py-32 bg-[#134B36]/3 border-y border-[#134B36]/5 transition-colors duration-700 hover:bg-[#134B36]/5">
+              <section className="py-20 md:py-32 bg-[#F8F6F0] relative z-20">
                 <HowItWorks />
+              </section>
+
+              <section id="atolye-section" className="py-20 md:py-32 scroll-mt-24">
+                <VefaAtolyesi graveDesign={graveDesign} setGraveDesign={setGraveDesign} />
               </section>
 
               <Testimonials globalOrders={globalOrders} />
 
-              <section className="py-32 scroll-mt-24">
+              <section className="py-20 md:py-32 scroll-mt-24">
                 <CemeterySearch onOpenDemand={() => setDemandOpen(true)} />
               </section>
 
-              <section id="atolye-section" className="py-32 scroll-mt-24">
-                <VefaAtolyesi graveDesign={graveDesign} setGraveDesign={setGraveDesign} />
-              </section>
-
-              <section id="packages-section" className="max-w-[1440px] mx-auto px-10 md:px-24 pb-48 scroll-mt-24">
-                <div className="mb-20 text-left md:text-center"><h2 className="text-5xl font-serif text-[#134B36] tracking-tight">Hizmet Paketlerimiz</h2><div className="h-1 w-20 bg-[#134B36]/20 mt-6 md:mx-auto rounded-full" /></div>
+              <section id="packages-section" className="max-w-[1440px] mx-auto px-6 md:px-24 pb-32 md:pb-48 scroll-mt-24">
+                <div className="mb-16 md:mb-20 text-center">
+                  <h2 className="text-4xl md:text-5xl font-serif text-[#134B36] tracking-tight">Hizmet Paketlerimiz</h2>
+                  <div className="h-1 w-16 md:w-20 bg-[#134B36]/20 mt-6 mx-auto rounded-full" />
+                </div>
                 <Packages onSelect={handleSelectPackage} />
               </section>
               
@@ -533,9 +539,12 @@ function AppContent() {
         } />
       </Routes>
 
-      {/* PWA Yükleme Butonu (Yüzen - Floating) */}
+      {location.pathname !== '/admin' && location.pathname !== '/esnaf' && (
+        <MobileBottomNav onOpenAuth={handleOpenAuth} isLoggedIn={isLoggedIn} />
+      )}
+
       {showInstallBanner && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md animate-in slide-in-from-bottom-10 duration-700">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md animate-in slide-in-from-bottom-10 duration-700">
           <div className="bg-[#134B36] text-[#F8F6F0] p-4 rounded-[2rem] shadow-2xl border border-[#C9A84C]/30 flex items-center justify-between backdrop-blur-md bg-opacity-95">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/5">
