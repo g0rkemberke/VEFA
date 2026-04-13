@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { CheckCircle, XCircle, AlertCircle, X } from 'lucide-react';
 
 const Toast = ({ message, type = 'success', onClose }) => {
-  // Bildirimin 3 saniye sonra kendi kendine kapanmasını sağlayan zamanlayıcı
+  // Bildirimin 3 saniye sonra 
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();

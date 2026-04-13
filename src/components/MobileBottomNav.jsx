@@ -8,7 +8,6 @@ const MobileBottomNav = ({ onOpenAuth, isLoggedIn }) => {
 
   const isActive = (path) => location.pathname === path;
 
-  // Özel Sipariş butonu tıklandığında (Şimdilik hizmetler sayfasına yönlendirir, oradan paket seçilebilir)
   const handleOrderClick = () => {
     navigate('/hizmetler');
     window.scrollTo({ top: 0, behavior: 'smooth' });
