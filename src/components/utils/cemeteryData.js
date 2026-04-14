@@ -1,6 +1,6 @@
 // src/utils/cemeteryData.js
 
-// 🌍 HARİTA ÜZERİNDEKİ PİNLER İÇİN GERÇEK GPS VERİSİ (DEV LİSTE)
+//  GERÇEK GPS VERİSİ 
 export const ISTANBUL_MAP_DATA = [
     // BEŞİKTAŞ
     { id: 101, district: "Beşiktaş", name: "Aşiyan Mezarlığı", lat: 41.0825, lng: 29.0560, package: "Tüm Paketler" },
@@ -85,7 +85,7 @@ export const ISTANBUL_MAP_DATA = [
 
     // BÜYÜKÇEKMECE
     { id: 1701, district: "Büyükçekmece", name: "Büyükçekmece Yeni Mezarlık", lat: 41.0250, lng: 28.5850, package: "Standart" },
-    { id: 1702, district: "Büyükçekmece", name: "Mimarsinan Mezarlığı", lat: 41.0020, lng: 28.5620, package: "Standart / Premium" },
+    { id: 1702, district: "Büyükçekmece", name: "Mimarsinan Mezarlığı", lat: 41.01549460522703, lng: 28.55390418650726, package: "Standart / Premium" },
 
     // SİLİVRİ
     { id: 1801, district: "Silivri", name: "Silivri Yeni Mezarlığı", lat: 41.0780, lng: 28.2520, package: "Standart" },
@@ -104,7 +104,6 @@ export const ISTANBUL_MAP_DATA = [
     { id: 2102, district: "Beylikdüzü", name: "Gürpınar Mezarlığı", lat: 40.9880, lng: 28.6120, package: "Standart / Premium" }
 ];
 
-// 📋 DROPDOWN VE LİSTELER İÇİN GRUPLANMIŞ VERİ
 export const ISTANBUL_MEZARLIKLARI = {
     "Adalar": ["Büyükada Mezarlığı", "Heybeliada Mezarlığı", "Burgazada Mezarlığı", "Kınalıada Mezarlığı"],
     "Arnavutköy": ["Arnavutköy Asri Mezarlığı", "Hadımköy Mezarlığı", "Taşoluk Mezarlığı"],

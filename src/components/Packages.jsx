@@ -11,6 +11,7 @@ const Packages = ({ onSelect }) => {
         "Yabani ot temizliği ve çevre düzeni",
         "Mermer ve taş yüzeylerin yıkanması",
         "Eski ve kurumuş çiçeklerin toplanması",
+        "Yeşillendirme",
         "Hizmet öncesi ve sonrası fotoğraflı rapor"
       ],
       isPopular: false
@@ -48,8 +49,8 @@ const Packages = ({ onSelect }) => {
         <div
           key={idx}
           className={`relative flex flex-col justify-between rounded-[3rem] p-10 transition-all duration-700 hover:-translate-y-4 hover:shadow-2xl cursor-default ${pkg.isPopular
-              ? 'bg-[#134B36] text-[#F8F6F0] shadow-xl shadow-[#134B36]/30 md:scale-105 z-10'
-              : 'bg-white/80 backdrop-blur-md border border-[#134B36]/10 text-[#134B36] shadow-sm'
+            ? 'bg-[#134B36] text-[#F8F6F0] shadow-xl shadow-[#134B36]/30 md:scale-105 z-10'
+            : 'bg-white/80 backdrop-blur-md border border-[#134B36]/10 text-[#134B36] shadow-sm'
             }`}
         >
           {pkg.isPopular && (
@@ -91,8 +92,8 @@ const Packages = ({ onSelect }) => {
           <button
             onClick={() => onSelect(pkg)}
             className={`w-full mt-12 py-5 rounded-[1.8rem] font-bold text-sm tracking-wide transition-all active:scale-95 flex justify-center items-center gap-2 group ${pkg.isPopular
-                ? 'bg-[#F8F6F0] text-[#134B36] hover:bg-white shadow-lg'
-                : 'bg-[#134B36] text-[#F8F6F0] hover:bg-[#0B2E21] shadow-md hover:shadow-xl'
+              ? 'bg-[#F8F6F0] text-[#134B36] hover:bg-white shadow-lg'
+              : 'bg-[#134B36] text-[#F8F6F0] hover:bg-[#0B2E21] shadow-md hover:shadow-xl'
               }`}
           >
             Bu Hizmeti Seç
